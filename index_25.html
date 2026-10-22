@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>比較くん｜複数画像比較</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #faf7f2; --panel: #ffffff; --border: #e8e3da;
+    --text: #2a2825; --text-soft: #7a766e;
+    --accent: #e07856; --accent-deep: #c8553d; --accent-soft: #fbeae3;
+    --success: #6b9450; --danger: #c0392b;
+    --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+    --w: 200px; --label: 168px;
+  }
+  body {
+    font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    padding: 8px 8px 60px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; }
+
+  header {
+    background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 16px; margin-bottom: 10px; box-shadow: var(--shadow);
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand h1 { font-size: 18px; font-weight: 800; letter-spacing: .02em; }
+  .brand h1 span { color: var(--accent-deep); }
+  .version { font-size: 11px; font-weight: 700; color: var(--text-soft); background: #f0ece4; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 13px; font-weight: 700; padding: 7px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; transition: background .12s, border-color .12s; }
+  .btn:hover { background: #fdfcfa; border-color: #d8d0c4; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+  .btn:disabled { opacity: .5; cursor: default; }
+
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
+  .panel-header { padding: 10px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .panel-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 9px; }
+  .panel-title::before { content: ''; width: 4px; height: 15px; background: var(--accent); border-radius: 2px; }
+  .panel-body { padding: 16px 18px; }
+
+  /* ---- アップロード ---- */
+  .up-row { display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap; }
+  .drop { flex: 1 1 380px; display: flex; align-items: center; justify-content: center; gap: 14px; background: #fdfcfa; border: 2px dashed #d8d0c4; border-radius: 10px; padding: 18px 14px; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.drag { border-color: var(--accent); background: var(--accent-soft); }
+  .drop .icon { font-size: 34px; line-height: 1; }
+  .drop .big { font-size: 15px; font-weight: 700; }
+  .drop .small { font-size: 12px; color: var(--text-soft); margin-top: 2px; }
+  .drop input { display: none; }
+  .name-box { flex: 0 1 260px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+  .name-box label { font-size: 12px; font-weight: 700; color: var(--text-soft); }
+  .name-box input { font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+  .name-box input:focus { outline: none; border-color: var(--accent); }
+  .name-box .hint { font-size: 11px; color: var(--text-soft); }
+
+  body.dragging::after { content: 'ここにドロップでアップ'; position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: var(--accent-deep); background: rgba(251,234,227,.82); border: 4px dashed var(--accent); pointer-events: none; }
+
+  /* ---- 一覧 ---- */
+  .size-control { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .size-control .sc-label { font-size: 12px; color: var(--text-soft); font-weight: 600; }
+  .stepper { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+  .stepper button { font-size: 17px; font-weight: 700; line-height: 1; width: 32px; height: 32px; border: none; background: #fdfcfa; color: var(--accent-deep); cursor: pointer; }
+  .stepper button:hover { background: var(--accent-soft); }
+  .stepper input { width: 58px; height: 32px; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); text-align: center; font: inherit; font-size: 13px; font-weight: 700; color: var(--text); -moz-appearance: textfield; }
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .presets { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .presets button { border: none; background: #fff; padding: 0 12px; height: 32px; font-size: 13px; font-weight: 700; color: var(--text-soft); cursor: pointer; }
+  .presets button + button { border-left: 1px solid var(--border); }
+  .presets button.on { background: var(--accent-soft); color: var(--accent-deep); }
+
+  .board { overflow-x: auto; overflow-y: hidden; padding-bottom: 6px; }
+  .board-inner { width: max-content; min-width: 100%; }
+  .row { display: flex; align-items: flex-start; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: none; }
+  .row.colnums { position: sticky; top: 0; background: #fdfcfa; border-bottom: 1px solid var(--border); }
+  .row.colnums .lab { background: #fdfcfa; padding-top: 6px; padding-bottom: 6px; font-size: 11px; color: var(--text-soft); font-weight: 700; }
+  .row.colnums .cn { width: var(--w); flex: none; padding: 6px 6px; text-align: center; font-size: 11px; font-weight: 700; color: var(--text-soft); }
+
+  .lab { position: sticky; left: 0; z-index: 2; flex: none; width: var(--label); align-self: stretch; background: var(--panel); border-right: 1px solid var(--border); padding: 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .lab .gname { font-size: 14px; font-weight: 800; line-height: 1.35; word-break: break-all; cursor: text; border-radius: 4px; }
+  .lab .gname:hover { background: #f6f2ec; }
+  .lab .gname[contenteditable="true"] { background: #fff; outline: 2px solid var(--accent); padding: 0 2px; }
+  .lab .meta { font-size: 11px; color: var(--text-soft); }
+  .lab .acts { display: flex; gap: 6px; margin-top: 4px; }
+  .lab .acts button { border: 1px solid var(--border); background: #fff; color: var(--text-soft); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
+  .lab .acts button:hover { color: var(--danger); border-color: #e6b8b2; background: #fdf3f2; }
+  .lab .acts button.ren:hover { color: var(--accent-deep); border-color: #ecc3b4; background: var(--accent-soft); }
+  .lab .state { font-size: 11px; font-weight: 700; color: var(--accent-deep); display: flex; align-items: center; gap: 6px; }
+  .lab .state.err { color: var(--danger); }
+  .bar { height: 4px; background: #f0ece4; border-radius: 2px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+  .cells { display: flex; align-items: flex-start; }
+  .cell { flex: none; width: var(--w); padding: 8px 6px 10px; }
+  .cell .ph { position: relative; background: #f4f1ec; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; cursor: zoom-in; }
+  .cell img { display: block; width: 100%; height: auto; }
+  .cell .no { position: absolute; left: 4px; top: 4px; background: rgba(42,40,37,.72); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+  .cell .fn { font-size: 10px; color: var(--text-soft); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row.pending .cell .ph { opacity: .7; }
+
+  .empty { padding: 40px 18px; text-align: center; color: var(--text-soft); font-size: 13px; }
+  .empty .big { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .empty .btn { margin-top: 12px; }
+
+  .spinner { width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; display: inline-block; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { text-align: center; font-size: 11px; color: var(--text-soft); margin-top: 18px; }
+
+  /* ---- モーダル ---- */
+  .overlay { position: fixed; inset: 0; z-index: 100; background: rgba(42,40,37,.45); display: none; align-items: center; justify-content: center; padding: 16px; }
+  .overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 480px; padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+  .modal h2 { font-size: 16px; margin-bottom: 8px; }
+  .modal p { font-size: 12px; color: var(--text-soft); margin-bottom: 14px; }
+  .modal label { display: block; font-size: 12px; font-weight: 700; margin: 10px 0 4px; }
+  .modal input { width: 100%; font: inherit; font-size: 14px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; }
+  .modal input:focus { outline: none; border-color: var(--accent); }
+  .modal .detect { font-size: 11px; color: var(--text-soft); margin-top: 4px; }
+  .modal .row2 { display: flex; gap: 10px; }
+  .modal .row2 > div:first-child { flex: 1; }
+  .modal .row2 > div:last-child { width: 120px; }
+  .modal .foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .status { font-size: 12px; margin-top: 12px; min-height: 18px; }
+  .status.ok { color: var(--success); font-weight: 700; }
+  .status.err { color: var(--danger); font-weight: 700; }
+  .status.loading { color: var(--text-soft); }
+
+  /* ---- 拡大表示 ---- */
+  .lb { position: fixed; inset: 0; z-index: 120; background: rgba(20,19,18,.94); display: none; flex-direction: column; }
+  .lb.show { display: flex; }
+  .lb-top { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; color: #fff; gap: 10px; }
+  .lb-cap { font-size: 13px; font-weight: 700; }
+  .lb-cap small { font-weight: 500; opacity: .7; margin-left: 8px; }
+  .lb-x { background: none; border: none; color: #fff; font-size: 26px; cursor: pointer; line-height: 1; padding: 0 6px; }
+  .lb-main { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; padding: 0 56px; }
+  .lb-main img { max-width: 100%; max-height: 100%; object-fit: contain; background: #fff; }
+  .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.12); border: none; color: #fff; font-size: 30px; width: 44px; height: 64px; border-radius: 8px; cursor: pointer; }
+  .lb-nav:hover { background: rgba(255,255,255,.22); }
+  .lb-nav.prev { left: 8px; } .lb-nav.next { right: 8px; }
+  .lb-help { text-align: center; color: rgba(255,255,255,.6); font-size: 11px; padding: 8px; }
+
+  @media (max-width: 600px) {
+    :root { --label: 112px; }
+    .name-box { flex: 1 1 100%; }
+    .lab { padding: 10px 8px; }
+    .lab .gname { font-size: 12px; }
+    .lb-main { padding: 0 8px; }
+    .lb-nav { width: 36px; height: 52px; font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>比較くん <span>複数画像比較</span></h1>
+    <span class="version">v1.0</span>
+  </div>
+  <div class="header-right">
+    <button class="btn" id="reloadBtn" title="GitHubから最新を読み込み">🔄 再読込</button>
+    <button class="btn" id="settingsBtn">⚙ 設定</button>
+  </div>
+</header>
+
+<section class="panel">
+  <div class="panel-header"><div class="panel-title">画像をアップロード</div></div>
+  <div class="panel-body">
+    <div class="up-row">
+      <label class="drop" id="drop">
+        <div class="icon">🖼️</div>
+        <div>
+          <div class="big">1商品分の画像をまとめてドラッグ＆ドロップ</div>
+          <div class="small">ドロップした分が1行になり、すぐ下の一覧に追加されます（ファイル名順に左から並びます）。クリックで選択もOK。</div>
+        </div>
+        <input type="file" id="file" accept="image/*" multiple>
+      </label>
+      <div class="name-box">
+        <label for="gName">商品名（任意）</label>
+        <input type="text" id="gName" placeholder="空欄ならファイル名から自動">
+        <div class="hint">アップ後に一覧の名前をクリックして変更もできます。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div class="panel-title" id="listTitle">比較一覧</div>
+    <div class="size-control">
+      <span class="sc-label">画像の幅</span>
+      <div class="presets" id="presets">
+        <button data-v="140">小</button><button data-v="220">中</button><button data-v="320">大</button>
+      </div>
+      <div class="stepper">
+        <button id="wMinus" aria-label="小さく">−</button>
+        <input type="number" id="wInput" min="80" max="700" step="10">
+        <button id="wPlus" aria-label="大きく">＋</button>
+      </div>
+      <span class="sc-label">px</span>
+    </div>
+  </div>
+  <div id="boardWrap"></div>
+</section>
+
+<footer>比較くん v1.0（2026.10.22）— 画像はドロップ時に圧縮され、設定したGitHubリポジトリにだけ保存されます。</footer>
+
+<!-- 設定 -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <h2>⚙ GitHub設定</h2>
+    <p>アップ・削除には書き込み用のGitHubトークンが必要です（このブラウザにのみ保存）。同じブラウザで「表示確認くん」に設定済みなら、そのトークンがそのまま使われます。</p>
+    <label for="ghToken">GitHub Personal Access Token（Contents: Read and write）</label>
+    <input type="password" id="ghToken" placeholder="github_pat_…" autocomplete="off">
+    <div class="row2">
+      <div>
+        <label for="ghRepo">オーナー / リポジトリ</label>
+        <input type="text" id="ghRepo" placeholder="owner/repo">
+      </div>
+      <div>
+        <label for="ghBranch">ブランチ</label>
+        <input type="text" id="ghBranch" placeholder="main">
+      </div>
+    </div>
+    <div class="detect" id="repoDetect"></div>
+    <div class="status" id="setStatus"></div>
+    <div class="foot">
+      <button class="btn" id="setClose">閉じる</button>
+      <button class="btn" id="setTest">接続テスト</button>
+      <button class="btn primary" id="setSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 拡大表示 -->
+<div class="lb" id="lb">
+  <div class="lb-top">
+    <div class="lb-cap" id="lbCap"></div>
+    <button class="lb-x" id="lbClose" aria-label="閉じる">✕</button>
+  </div>
+  <div class="lb-main">
+    <button class="lb-nav prev" id="lbPrev" aria-label="前の画像">‹</button>
+    <img id="lbImg" alt="">
+    <button class="lb-nav next" id="lbNext" aria-label="次の画像">›</button>
+  </div>
+  <div class="lb-help">← → 同じ商品の前後の画像 ／ ↑ ↓ 他の商品の同じ番号の画像 ／ Esc 閉じる</div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var DIR = 'shared/hikaku';           // リポジトリ内の保存先
+  var MAX_DIM = 1600, QUALITY = 0.85;  // アップ時の圧縮設定
+  var WMIN = 80, WMAX = 700, WSTEP = 10, WDEF = 220;
+
+  // ---------- 汎用 ----------
+  function $(id){ return document.getElementById(id); }
+  function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+  function lsSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function pad2(n){ return (n<10?'0':'')+n; }
+  function utf8b64(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function b64utf8(b64){ b64=b64.replace(/\s/g,''); try{ return decodeURIComponent(escape(atob(b64))); }catch(e){ return atob(b64); } }
+  function fmtDate(t){ var d=new Date(t); return (d.getMonth()+1)+'/'+d.getDate()+' '+pad2(d.getHours())+':'+pad2(d.getMinutes()); }
+  function natSort(a,b){ return a.localeCompare(b,'ja',{numeric:true,sensitivity:'base'}); }
+
+  // ---------- 設定（トークンは表示確認くんと共通キー） ----------
+  function getToken(){ return lsGet('hyoji:ghtoken')||''; }
+  function getRepoOverride(){ try{ var s=lsGet('hikaku:repo'); return s?JSON.parse(s):null; }catch(e){ return null; } }
+  function detectRepo(){
+    var m=location.hostname.match(/^([^.]+)\.github\.io$/i);
+    if(!m) return null;
+    var seg=location.pathname.split('/').filter(Boolean)[0];
+    if(!seg || /\.html?$/i.test(seg)) return {owner:m[1],repo:m[1]+'.github.io',branch:'main'};
+    return {owner:m[1],repo:seg,branch:'main'};
+  }
+  function activeRepo(){ return getRepoOverride()||detectRepo(); }
+
+  var settingsOverlay=$('settingsOverlay'), setStatus=$('setStatus');
+  function showSet(msg,cls){ setStatus.textContent=msg; setStatus.className='status '+(cls||''); }
+  function openSettings(){
+    var r=activeRepo(), det=detectRepo();
+    $('ghToken').value=getToken();
+    $('ghRepo').value=r?(r.owner+'/'+r.repo):'';
+    $('ghBranch').value=r?(r.branch||'main'):'main';
+    $('repoDetect').textContent=det?('自動検出：'+det.owner+'/'+det.repo+'（このページのURLから）'):'このページはGitHub Pages上ではないため、owner/repo を手入力してください。';
+    showSet('');
+    settingsOverlay.classList.add('show');
+  }
+  $('settingsBtn').addEventListener('click',openSettings);
+  $('setClose').addEventListener('click',function(){ settingsOverlay.classList.remove('show'); });
+  settingsOverlay.addEventListener('click',function(e){ if(e.target===settingsOverlay) settingsOverlay.classList.remove('show'); });
+  $('setSave').addEventListener('click',function(){
+    var tok=$('ghToken').value.trim(), rp=$('ghRepo').value.trim(), br=$('ghBranch').value.trim()||'main';
+    if(tok) lsSet('hyoji:ghtoken',tok);
+    if(rp.indexOf('/')>0){ var p=rp.split('/'); lsSet('hikaku:repo',JSON.stringify({owner:p[0].trim(),repo:p.slice(1).join('/').trim(),branch:br})); }
+    showSet('✓ 保存しました','ok');
+    setTimeout(function(){ settingsOverlay.classList.remove('show'); loadBoard(); },700);
+  });
+  $('setTest').addEventListener('click',async function(){
+    var tok=$('ghToken').value.trim(), rp=$('ghRepo').value.trim();
+    if(!tok){ showSet('トークンを入力してください','err'); return; }
+    if(rp.indexOf('/')<1){ showSet('owner/repo を入力してください','err'); return; }
+    showSet('接続テスト中...','loading');
+    try{
+      var res=await fetch('https://api.github.com/repos/'+rp,{headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'}});
+      if(!res.ok) throw new Error(res.status+' '+res.statusText);
+      var d=await res.json();
+      var canPush=d.permissions?d.permissions.push:true;
+      showSet((canPush?'✓ 接続OK：':'△ 読み取りのみ：')+d.full_name+'（'+(d.private?'非公開':'公開')+'）'+(d.private?'　※画像表示には公開リポジトリ推奨':''),canPush?'ok':'err');
+    }catch(e){ showSet('✗ 失敗：'+e.message,'err'); }
+  });
+  function needSetup(){
+    var token=getToken(), repo=activeRepo();
+    if(!token||!repo||!repo.owner||!repo.repo){ openSettings(); showSet(!token?'まずトークンを設定してください':'owner/repo を設定してください','err'); return null; }
+    return {token:token,repo:repo};
+  }
+
+  // ---------- GitHub API ----------
+  function apiBase(repo){ return 'https://api.github.com/repos/'+repo.owner+'/'+repo.repo; }
+  function rawBase(repo){ return 'https://raw.githubusercontent.com/'+repo.owner+'/'+repo.repo+'/'+repo.branch+'/'+DIR+'/'; }
+  async function gh(url,opt,token){
+    opt=opt||{};
+    opt.headers=Object.assign({'Accept':'application/vnd.github+json','Content-Type':'application/json'},token?{'Authorization':'Bearer '+token}:{},opt.headers||{});
+    var res=await fetch(url,opt);
+    if(!res.ok){ var t=await res.text().catch(function(){return '';}); var e=new Error(res.status+': '+t.slice(0,160)); e.status=res.status; throw e; }
+    return res.json();
+  }
+  // 指定コミット時点の manifest を取得（無ければ空）
+  async function getManifest(repo,token,ref){
+    var url=apiBase(repo)+'/contents/'+DIR+'/manifest.json?ref='+encodeURIComponent(ref||repo.branch)+'&t='+Date.now();
+    var h={'Accept':'application/vnd.github+json'}; if(token) h['Authorization']='Bearer '+token;
+    var res=await fetch(url,{headers:h,cache:'no-store'});
+    if(res.status===404) return {groups:[]};
+    if(!res.ok){ var t=await res.text().catch(function(){return '';}); throw new Error(res.status+': '+t.slice(0,120)); }
+    var d=await res.json();
+    try{ var m=JSON.parse(b64utf8(d.content)); if(!Array.isArray(m.groups)) m.groups=[]; return m; }catch(e){ return {groups:[]}; }
+  }
+  async function makeBlob(repo,token,b64){
+    var b=await gh(apiBase(repo)+'/git/blobs',{method:'POST',body:JSON.stringify({content:b64,encoding:'base64'})},token);
+    return b.sha;
+  }
+  // 最新の manifest を土台に mutator を適用して1コミットで反映。競合時は取り直して再試行（強制上書きはしない）
+  async function commitChange(s,mutator,fileEntries,message,deletePaths){
+    var api=apiBase(s.repo), lastErr=null;
+    for(var attempt=0; attempt<5; attempt++){
+      try{
+        var ref=await gh(api+'/git/ref/heads/'+encodeURIComponent(s.repo.branch)+'?t='+Date.now(),{},s.token);
+        var baseSha=ref.object.sha;
+        var man=await getManifest(s.repo,s.token,baseSha);
+        mutator(man);
+        man.updatedAt=Date.now();
+        var manSha=await makeBlob(s.repo,s.token,utf8b64(JSON.stringify(man,null,1)));
+        var entries=(fileEntries||[]).concat([{path:DIR+'/manifest.json',mode:'100644',type:'blob',sha:manSha}]);
+        (deletePaths||[]).forEach(function(p){ entries.push({path:p,mode:'100644',type:'blob',sha:null}); });
+        var baseCommit=await gh(api+'/git/commits/'+baseSha,{},s.token);
+        var tree=await gh(api+'/git/trees',{method:'POST',body:JSON.stringify({base_tree:baseCommit.tree.sha,tree:entries})},s.token);
+        var commit=await gh(api+'/git/commits',{method:'POST',body:JSON.stringify({message:message,tree:tree.sha,parents:[baseSha]})},s.token);
+        await gh(api+'/git/refs/heads/'+encodeURIComponent(s.repo.branch),{method:'PATCH',body:JSON.stringify({sha:commit.sha,force:false})},s.token);
+        return man;
+      }catch(e){
+        lastErr=e; var m=''+(e&&e.message||'');
+        if(e.status===409 || m.indexOf('fast forward')>=0){ await new Promise(function(r){ setTimeout(r,400+attempt*300); }); continue; }
+        throw e;
+      }
+    }
+    throw lastErr||new Error('commit failed');
+  }
+
+  // ---------- 状態 ----------
+  var groups=[];        // 表示中の商品グループ（保存済み＋アップ中）
+  var loadState='idle'; // idle | loading | ready | nosetup | error
+  var loadErr='';
+  var localUrls={};     // 'groupId/file' -> blob URL（アップ直後はローカル画像で即表示）
+
+  function imgSrc(g,im){
+    var k=g.id+'|'+im.file;
+    if(localUrls[k]) return localUrls[k];
+    var repo=activeRepo(); if(!repo) return '';
+    return rawBase(repo)+im.file+'?v='+(g.createdAt||0);
+  }
+
+  // ---------- 表示サイズ ----------
+  var wInput=$('wInput');
+  (function(){ var n=parseInt(lsGet('hikaku:w'),10); wInput.value=(n>=WMIN&&n<=WMAX)?n:WDEF; })();
+  function clampW(){ var n=parseInt(wInput.value,10); if(isNaN(n)) n=WDEF; return Math.max(WMIN,Math.min(WMAX,n)); }
+  function applyW(){
+    var n=clampW(); wInput.value=n;
+    document.documentElement.style.setProperty('--w',n+'px'); lsSet('hikaku:w',String(n));
+    Array.prototype.forEach.call($('presets').children,function(b){ b.classList.toggle('on',+b.dataset.v===n); });
+  }
+  $('wMinus').addEventListener('click',function(){ wInput.value=clampW()-WSTEP; applyW(); });
+  $('wPlus').addEventListener('click',function(){ wInput.value=clampW()+WSTEP; applyW(); });
+  wInput.addEventListener('change',applyW);
+  $('presets').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return; wInput.value=b.dataset.v; applyW(); });
+  applyW();
+
+  // ---------- 描画 ----------
+  var boardWrap=$('boardWrap');
+  function render(){
+    var saved=groups.filter(function(g){ return !g.pending; }).length;
+    $('listTitle').textContent='比較一覧'+(groups.length?'（'+saved+'商品）':'');
+
+    if(!groups.length){
+      if(loadState==='loading'){ boardWrap.innerHTML='<div class="empty"><span class="spinner"></span>　読み込み中…</div>'; return; }
+      if(loadState==='nosetup'){ boardWrap.innerHTML='<div class="empty"><div class="big">GitHubの保存先が未設定です</div>トークンとリポジトリを設定すると、アップした画像がここに並びます。<br><button class="btn primary" data-act="settings">⚙ 設定を開く</button></div>'; return; }
+      if(loadState==='error'){ boardWrap.innerHTML='<div class="empty"><div class="big">読み込めませんでした</div>'+esc(loadErr)+'<br><button class="btn" data-act="reload">🔄 もう一度</button></div>'; return; }
+      boardWrap.innerHTML='<div class="empty"><div class="big">まだ画像がありません</div>上の枠に1商品分の画像をまとめてドロップすると、ここに1行ずつ並びます。</div>';
+      return;
+    }
+
+    var maxN=0; groups.forEach(function(g){ maxN=Math.max(maxN,g.images.length); });
+    var h=['<div class="board" id="board"><div class="board-inner">'];
+    h.push('<div class="row colnums"><div class="lab">商品</div><div class="cells">');
+    for(var c=1;c<=maxN;c++) h.push('<div class="cn">'+c+'</div>');
+    h.push('</div></div>');
+
+    groups.forEach(function(g,gi){
+      h.push('<div class="row'+(g.pending?' pending':'')+'" data-g="'+gi+'"><div class="lab">');
+      h.push('<div class="gname" data-act="rename" title="クリックで名前を変更">'+esc(g.name)+'</div>');
+      h.push('<div class="meta">'+g.images.length+'枚・'+fmtDate(g.createdAt)+'</div>');
+      if(g.pending){
+        if(g.error){
+          h.push('<div class="state err">✗ アップ失敗</div><div class="meta">'+esc(g.error)+'</div>');
+          h.push('<div class="acts"><button data-act="retry">再試行</button><button data-act="discard">取消</button></div>');
+        } else {
+          h.push('<div class="state"><span class="spinner"></span>'+esc(g.stateText||'アップ中…')+'</div><div class="bar"><i style="width:'+(g.progress||0)+'%"></i></div>');
+        }
+      } else if(g.busy){
+        h.push('<div class="state"><span class="spinner"></span>'+esc(g.busy)+'</div>');
+      } else {
+        h.push('<div class="acts"><button class="ren" data-act="rename">名前</button><button data-act="delete">削除</button></div>');
+      }
+      h.push('</div><div class="cells">');
+      g.images.forEach(function(im,ii){
+        h.push('<div class="cell"><div class="ph" data-act="zoom" data-i="'+ii+'"><img loading="lazy" src="'+esc(imgSrc(g,im))+'" alt="'+esc(im.name)+'"><span class="no">'+(ii+1)+'</span></div><div class="fn" title="'+esc(im.name)+'">'+esc(im.name)+'</div></div>');
+      });
+      h.push('</div></div>');
+    });
+    h.push('</div></div>');
+
+    var prev=$('board'), sl=prev?prev.scrollLeft:0;
+    boardWrap.innerHTML=h.join('');
+    $('board').scrollLeft=sl;
+  }
+
+  boardWrap.addEventListener('click',function(e){
+    var t=e.target.closest('[data-act]'); if(!t) return;
+    var act=t.dataset.act;
+    if(act==='settings'){ openSettings(); return; }
+    if(act==='reload'){ loadBoard(); return; }
+    var row=t.closest('.row'); if(!row) return;
+    var g=groups[+row.dataset.g]; if(!g) return;
+    if(act==='zoom') openLb(+row.dataset.g,+t.dataset.i);
+    else if(act==='rename' && !g.pending && !g.busy) startRename(row,g);
+    else if(act==='delete') deleteGroup(g);
+    else if(act==='retry'){ g.error=null; g.progress=0; render(); enqueue(function(){ return uploadGroup(g); }); }
+    else if(act==='discard'){ groups.splice(groups.indexOf(g),1); render(); }
+  });
+
+  // ---------- 読み込み ----------
+  async function loadBoard(){
+    var repo=activeRepo();
+    if(!repo){ loadState='nosetup'; groups=groups.filter(function(g){ return g.pending; }); render(); return; }
+    loadState='loading'; if(!groups.length) render();
+    try{
+      var man;
+      try{ man=await getManifest(repo,getToken()); }
+      catch(e){ // APIの回数制限などはrawで代替
+        var r=await fetch(rawBase(repo)+'manifest.json?t='+Date.now(),{cache:'no-store'});
+        if(r.status===404) man={groups:[]};
+        else if(!r.ok) throw e;
+        else man=await r.json();
+      }
+      var pend=groups.filter(function(g){ return g.pending; });
+      groups=(man.groups||[]).concat(pend);
+      loadState='ready';
+    }catch(e){
+      loadState='error'; loadErr=e.message;
+    }
+    render();
+  }
+  $('reloadBtn').addEventListener('click',loadBoard);
+
+  // ---------- アップロード ----------
+  var queue=Promise.resolve();
+  function enqueue(fn){ queue=queue.then(fn).catch(function(){}); return queue; }
+
+  function guessName(names){
+    var bases=names.map(function(n){ return n.replace(/\.[^.]+$/,''); });
+    var p=bases[0]||'';
+    bases.forEach(function(b){ var i=0; while(i<p.length&&i<b.length&&p[i]===b[i]) i++; p=p.slice(0,i); });
+    p=p.replace(/[\s_\-.(（\[【]*\d*$/,'').trim();
+    if(p.length>=2) return p;
+    var one=(bases[0]||'').replace(/[\s_\-.]*\d+$/,'').trim();
+    return one.length>=2 && bases.length===1 ? one : '商品 '+(groups.length+1);
+  }
+
+  function readImage(file){
+    return new Promise(function(resolve,reject){
+      var url=URL.createObjectURL(file), im=new Image();
+      im.onload=function(){ resolve({img:im,url:url,w:im.naturalWidth,h:im.naturalHeight}); };
+      im.onerror=function(){ URL.revokeObjectURL(url); reject(new Error(file.name+' を読み込めませんでした')); };
+      im.src=url;
+    });
+  }
+  function toJpegB64(img,w,h){
+    var scale=Math.min(1,MAX_DIM/Math.max(w,h));
+    var cw=Math.max(1,Math.round(w*scale)), ch=Math.max(1,Math.round(h*scale));
+    var c=document.createElement('canvas'); c.width=cw; c.height=ch;
+    var ctx=c.getContext('2d'); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,cw,ch);
+    ctx.imageSmoothingQuality='high'; ctx.drawImage(img,0,0,cw,ch);
+    return c.toDataURL('image/jpeg',QUALITY).split(',')[1];
+  }
+
+  async function handleFiles(fileList){
+    var files=Array.prototype.filter.call(fileList||[],function(f){ return /^image\//.test(f.type)||/\.(jpe?g|png|gif|webp|bmp|avif)$/i.test(f.name); });
+    if(!files.length) return;
+    var s=needSetup(); if(!s) return;
+    files.sort(function(a,b){ return natSort(a.name,b.name); });
+
+    var stamp=Date.now(), id='g'+stamp;
+    var nameIn=$('gName'), name=nameIn.value.trim()||guessName(files.map(function(f){ return f.name; }));
+    nameIn.value='';
+    var g={id:id,name:name,createdAt:stamp,images:[],pending:true,progress:0,stateText:'読み込み中…',_files:files};
+    groups.push(g);
+    if(loadState!=='ready') loadState='ready';
+    render();
+    var b=$('board'); if(b) b.scrollIntoView({block:'nearest'});
+
+    // まずローカルで即表示
+    g._decoded=[];
+    for(var i=0;i<files.length;i++){
+      try{
+        var d=await readImage(files[i]);
+        var file=id+'/'+pad2(i+1)+'.jpg';
+        localUrls[id+'|'+file]=d.url;
+        g.images.push({file:file,name:files[i].name,w:d.w,h:d.h});
+        g._decoded.push(d);
+      }catch(e){ /* 読めない画像は飛ばす */ }
+    }
+    if(!g.images.length){ g.error='画像を読み込めませんでした'; render(); return; }
+    g.stateText='アップ待ち…'; render();
+    enqueue(function(){ return uploadGroup(g); });
+  }
+
+  async function uploadGroup(g){
+    var s=needSetup(); if(!s){ g.error='設定が必要です'; render(); return; }
+    try{
+      g.stateText='アップ中…'; g.progress=3; render();
+      var entries=[];
+      for(var i=0;i<g._decoded.length;i++){
+        var d=g._decoded[i];
+        var b64=toJpegB64(d.img,d.w,d.h);
+        var sha=await makeBlob(s.repo,s.token,b64);
+        entries.push({path:DIR+'/'+g.images[i].file,mode:'100644',type:'blob',sha:sha});
+        g.progress=Math.round((i+1)/g._decoded.length*85); render();
+      }
+      g.stateText='反映中…'; render();
+      var rec={id:g.id,name:g.name,createdAt:g.createdAt,images:g.images.map(function(im){ return {file:im.file,name:im.name,w:im.w,h:im.h}; })};
+      await commitChange(s,function(man){
+        man.groups=man.groups.filter(function(x){ return x.id!==rec.id; });
+        man.groups.push(rec);
+      },entries,'比較くん：'+g.name+'（'+g.images.length+'枚）を追加');
+      g.pending=false; g.progress=100; delete g._decoded; delete g._files; delete g.stateText;
+    }catch(e){
+      g.error=e.message;
+    }
+    render();
+  }
+
+  var drop=$('drop'), fileInput=$('file');
+  fileInput.addEventListener('change',function(){ handleFiles(fileInput.files); fileInput.value=''; });
+  // ページ全体でドロップ受付
+  var dragDepth=0;
+  function hasFiles(e){ return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types||[],'Files')>=0; }
+  window.addEventListener('dragenter',function(e){ if(!hasFiles(e)) return; e.preventDefault(); dragDepth++; document.body.classList.add('dragging'); drop.classList.add('drag'); });
+  window.addEventListener('dragover',function(e){ if(!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+  window.addEventListener('dragleave',function(e){ if(!hasFiles(e)) return; dragDepth=Math.max(0,dragDepth-1); if(!dragDepth){ document.body.classList.remove('dragging'); drop.classList.remove('drag'); } });
+  window.addEventListener('drop',function(e){ if(!hasFiles(e)) return; e.preventDefault(); dragDepth=0; document.body.classList.remove('dragging'); drop.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+
+  // ---------- 名前変更 ----------
+  function startRename(row,g){
+    var el=row.querySelector('.gname'); if(!el || el.isContentEditable) return;
+    el.contentEditable='true'; el.focus();
+    var r=document.createRange(); r.selectNodeContents(el); var sel=getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    var done=false;
+    function finish(save){
+      if(done) return; done=true;
+      el.contentEditable='false';
+      var nv=el.textContent.replace(/\s+/g,' ').trim();
+      if(!save || !nv || nv===g.name){ el.textContent=g.name; return; }
+      renameGroup(g,nv);
+    }
+    el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); finish(true); } else if(e.key==='Escape'){ finish(false); } });
+    el.addEventListener('blur',function(){ finish(true); },{once:true});
+  }
+  function renameGroup(g,nv){
+    var s=needSetup(); if(!s) return;
+    var old=g.name; g.name=nv; g.busy='保存中…'; render();
+    enqueue(async function(){
+      try{
+        await commitChange(s,function(man){ man.groups.forEach(function(x){ if(x.id===g.id) x.name=nv; }); },[],'比較くん：名前変更 '+old+' → '+nv);
+      }catch(e){ g.name=old; alert('名前を保存できませんでした。\n'+e.message); }
+      g.busy=null; render();
+    });
+  }
+
+  // ---------- 削除 ----------
+  function deleteGroup(g){
+    if(!confirm('「'+g.name+'」（'+g.images.length+'枚）を削除しますか？\nGitHub上の画像も削除されます。')) return;
+    var s=needSetup(); if(!s) return;
+    g.busy='削除中…'; render();
+    var paths=g.images.map(function(im){ return DIR+'/'+im.file; });
+    var mut=function(man){ man.groups=man.groups.filter(function(x){ return x.id!==g.id; }); };
+    enqueue(async function(){
+      try{
+        try{ await commitChange(s,mut,[],'比較くん：'+g.name+' を削除',paths); }
+        catch(e){ await commitChange(s,mut,[],'比較くん：'+g.name+' を一覧から削除'); } // 画像が既に無い場合など
+        groups.splice(groups.indexOf(g),1);
+        g.images.forEach(function(im){ var k=g.id+'|'+im.file; if(localUrls[k]){ URL.revokeObjectURL(localUrls[k]); delete localUrls[k]; } });
+      }catch(e){ g.busy=null; alert('削除できませんでした。\n'+e.message); }
+      g.busy=null; render();
+    });
+  }
+
+  // ---------- 拡大表示 ----------
+  var lb=$('lb'), lbImg=$('lbImg'), lbCap=$('lbCap'), cur={g:0,i:0};
+  function showLb(){
+    var g=groups[cur.g], im=g&&g.images[cur.i]; if(!im) return;
+    lbImg.src=imgSrc(g,im); lbImg.alt=im.name;
+    lbCap.innerHTML=esc(g.name)+'　'+(cur.i+1)+' / '+g.images.length+'<small>'+esc(im.name)+'</small>';
+  }
+  function openLb(gi,ii){ cur={g:gi,i:ii}; showLb(); lb.classList.add('show'); }
+  function closeLb(){ lb.classList.remove('show'); lbImg.removeAttribute('src'); }
+  function stepImg(d){ var g=groups[cur.g]; if(!g) return; cur.i=(cur.i+d+g.images.length)%g.images.length; showLb(); }
+  function stepGroup(d){
+    for(var k=1;k<=groups.length;k++){
+      var gi=(cur.g+d*k+groups.length*k)%groups.length;
+      if(groups[gi].images[cur.i]){ cur.g=gi; showLb(); return; }
+    }
+  }
+  $('lbPrev').addEventListener('click',function(){ stepImg(-1); });
+  $('lbNext').addEventListener('click',function(){ stepImg(1); });
+  $('lbClose').addEventListener('click',closeLb);
+  lb.addEventListener('click',function(e){ if(e.target===lb||e.target.classList.contains('lb-main')) closeLb(); });
+  document.addEventListener('keydown',function(e){
+    if(!lb.classList.contains('show')) return;
+    if(e.key==='Escape') closeLb();
+    else if(e.key==='ArrowLeft') stepImg(-1);
+    else if(e.key==='ArrowRight') stepImg(1);
+    else if(e.key==='ArrowUp'){ e.preventDefault(); stepGroup(-1); }
+    else if(e.key==='ArrowDown'){ e.preventDefault(); stepGroup(1); }
+  });
+  // スワイプ（左右＝前後の画像）
+  var tx=null, ty=null;
+  lb.addEventListener('touchstart',function(e){ var t=e.touches[0]; tx=t.clientX; ty=t.clientY; },{passive:true});
+  lb.addEventListener('touchend',function(e){
+    if(tx===null) return; var t=e.changedTouches[0], dx=t.clientX-tx, dy=t.clientY-ty; tx=ty=null;
+    if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)) stepImg(dx<0?1:-1);
+    else if(Math.abs(dy)>60) stepGroup(dy<0?1:-1);
+  });
+
+  window.addEventListener('beforeunload',function(e){ if(groups.some(function(g){ return g.pending && !g.error; })){ e.preventDefault(); e.returnValue=''; } });
+
+  loadBoard();
+})();
+</script>
+</body>
+</html>
