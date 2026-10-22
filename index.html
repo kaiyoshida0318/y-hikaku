@@ -12,7 +12,7 @@
     --accent: #e07856; --accent-deep: #c8553d; --accent-soft: #fbeae3;
     --success: #6b9450; --danger: #c0392b;
     --radius: 12px; --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
-    --w: 200px; --label: 168px;
+    --w: 200px; --label: 84px;
   }
   body {
     font-family: 'Hiragino Sans', 'Yu Gothic', 'Meiryo', sans-serif;
@@ -78,21 +78,20 @@
   .row { display: flex; align-items: flex-start; border-bottom: 1px solid var(--border); }
   .row:last-child { border-bottom: none; }
   .row.colnums { position: sticky; top: 0; background: #fdfcfa; border-bottom: 1px solid var(--border); }
-  .row.colnums .lab { background: #fdfcfa; padding-top: 6px; padding-bottom: 6px; font-size: 11px; color: var(--text-soft); font-weight: 700; }
+  .row.colnums .lab { background: #fdfcfa; padding-top: 6px; padding-bottom: 6px; font-size: 11px; justify-content: center; color: var(--text-soft); font-weight: 700; }
   .row.colnums .cn { width: var(--w); flex: none; padding: 6px 6px; text-align: center; font-size: 11px; font-weight: 700; color: var(--text-soft); }
 
-  .lab { position: sticky; left: 0; z-index: 2; flex: none; width: var(--label); align-self: stretch; background: var(--panel); border-right: 1px solid var(--border); padding: 12px 12px; display: flex; flex-direction: column; gap: 4px; }
-  .lab .gname { font-size: 14px; font-weight: 800; line-height: 1.35; word-break: break-all; cursor: text; border-radius: 4px; }
+  .lab { position: sticky; left: 0; z-index: 2; flex: none; width: var(--label); align-self: stretch; background: var(--panel); border-right: 1px solid var(--border); padding: 8px 6px; display: flex; flex-direction: column; gap: 2px; }
+  .lab .gname { font-size: 12px; font-weight: 800; line-height: 1.3; word-break: break-all; cursor: text; border-radius: 4px; }
   .lab .gname:hover { background: #f6f2ec; }
   .lab .gname[contenteditable="true"] { background: #fff; outline: 2px solid var(--accent); padding: 0 2px; }
-  .lab .meta { font-size: 11px; color: var(--text-soft); }
-  .lab .acts { display: flex; gap: 6px; margin-top: 4px; }
-  .lab .acts button { border: 1px solid var(--border); background: #fff; color: var(--text-soft); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
-  .lab .acts button:hover { color: var(--danger); border-color: #e6b8b2; background: #fdf3f2; }
-  .lab .acts button.ren:hover { color: var(--accent-deep); border-color: #ecc3b4; background: var(--accent-soft); }
-  .lab .state { font-size: 11px; font-weight: 700; color: var(--accent-deep); display: flex; align-items: center; gap: 6px; }
-  .lab .state.err { color: var(--danger); }
-  .bar { height: 4px; background: #f0ece4; border-radius: 2px; overflow: hidden; }
+  .lab .meta { font-size: 11px; color: var(--text-soft); display: flex; align-items: center; gap: 4px; }
+  .lab .ib { flex: none; width: 20px; height: 20px; padding: 0; border: 1px solid transparent; background: none; color: #b5afa5; font-size: 13px; line-height: 18px; text-align: center; border-radius: 5px; cursor: pointer; }
+  .lab .ib:hover { color: var(--danger); border-color: #e6b8b2; background: #fdf3f2; }
+  .lab .ib.go:hover { color: var(--accent-deep); border-color: #ecc3b4; background: var(--accent-soft); }
+  .lab .state { font-size: 11px; font-weight: 700; color: var(--accent-deep); display: flex; align-items: center; gap: 4px; }
+  .lab .state.err { color: var(--danger); cursor: help; }
+  .bar { height: 3px; background: #f0ece4; border-radius: 2px; overflow: hidden; margin-top: 2px; }
   .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 
   .cells { display: flex; align-items: flex-start; }
@@ -146,10 +145,8 @@
   .lb-help { text-align: center; color: rgba(255,255,255,.6); font-size: 11px; padding: 8px; }
 
   @media (max-width: 600px) {
-    :root { --label: 112px; }
+    :root { --label: 72px; }
     .name-box { flex: 1 1 100%; }
-    .lab { padding: 10px 8px; }
-    .lab .gname { font-size: 12px; }
     .lb-main { padding: 0 8px; }
     .lb-nav { width: 36px; height: 52px; font-size: 24px; }
   }
@@ -160,7 +157,7 @@
 <header>
   <div class="brand">
     <h1>比較くん <span>複数画像比較</span></h1>
-    <span class="version">v1.0</span>
+    <span class="version">v1.2</span>
   </div>
   <div class="header-right">
     <button class="btn" id="reloadBtn" title="GitHubから最新を読み込み">🔄 再読込</button>
@@ -208,7 +205,7 @@
   <div id="boardWrap"></div>
 </section>
 
-<footer>比較くん v1.0（2026.10.22）— 画像はドロップ時に圧縮され、設定したGitHubリポジトリにだけ保存されます。</footer>
+<footer>比較くん v1.2（2026.10.22）— 画像はドロップ時に圧縮され、設定したGitHubリポジトリにだけ保存されます。</footer>
 
 <!-- 設定 -->
 <div class="overlay" id="settingsOverlay">
@@ -311,8 +308,13 @@
       var res=await fetch('https://api.github.com/repos/'+rp,{headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'}});
       if(!res.ok) throw new Error(res.status+' '+res.statusText);
       var d=await res.json();
-      var canPush=d.permissions?d.permissions.push:true;
-      showSet((canPush?'✓ 接続OK：':'△ 読み取りのみ：')+d.full_name+'（'+(d.private?'非公開':'公開')+'）'+(d.private?'　※画像表示には公開リポジトリ推奨':''),canPush?'ok':'err');
+      // 書き込みテスト：空のblobを作るだけ（どこにも紐づかないのでリポジトリの中身は変わらない）
+      var w=await fetch('https://api.github.com/repos/'+rp+'/git/blobs',{method:'POST',headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({content:'',encoding:'utf-8'})});
+      if(!w.ok){
+        showSet('✗ 読み取りはできますが、書き込みできません（'+w.status+'）。トークンの Repository access に '+d.name+' を追加し、Contents を Read and write にしてください。','err');
+        return;
+      }
+      showSet('✓ 接続OK（書き込みも可能）：'+d.full_name+'（'+(d.private?'非公開':'公開')+'）'+(d.private?'　※画像表示には公開リポジトリ推奨':''),'ok');
     }catch(e){ showSet('✗ 失敗：'+e.message,'err'); }
   });
   function needSetup(){
@@ -422,19 +424,16 @@
 
     groups.forEach(function(g,gi){
       h.push('<div class="row'+(g.pending?' pending':'')+'" data-g="'+gi+'"><div class="lab">');
-      h.push('<div class="gname" data-act="rename" title="クリックで名前を変更">'+esc(g.name)+'</div>');
-      h.push('<div class="meta">'+g.images.length+'枚・'+fmtDate(g.createdAt)+'</div>');
-      if(g.pending){
-        if(g.error){
-          h.push('<div class="state err">✗ アップ失敗</div><div class="meta">'+esc(g.error)+'</div>');
-          h.push('<div class="acts"><button data-act="retry">再試行</button><button data-act="discard">取消</button></div>');
-        } else {
-          h.push('<div class="state"><span class="spinner"></span>'+esc(g.stateText||'アップ中…')+'</div><div class="bar"><i style="width:'+(g.progress||0)+'%"></i></div>');
-        }
+      h.push('<div class="gname" data-act="rename" title="'+esc(g.name)+'（クリックで名前を変更）">'+esc(g.name)+'</div>');
+      if(g.pending && g.error){
+        h.push('<div class="state err" data-act="showerr" title="'+esc(g.error)+'">✗ 失敗</div>');
+        h.push('<div class="meta">'+g.images.length+'枚<button class="ib go" data-act="retry" title="再試行">↻</button><button class="ib" data-act="discard" title="取消">×</button></div>');
+      } else if(g.pending){
+        h.push('<div class="meta">'+g.images.length+'枚</div><div class="state"><span class="spinner"></span>'+(g.progress||0)+'%</div><div class="bar"><i style="width:'+(g.progress||0)+'%"></i></div>');
       } else if(g.busy){
-        h.push('<div class="state"><span class="spinner"></span>'+esc(g.busy)+'</div>');
+        h.push('<div class="meta">'+g.images.length+'枚</div><div class="state" title="'+esc(g.busy)+'"><span class="spinner"></span></div>');
       } else {
-        h.push('<div class="acts"><button class="ren" data-act="rename">名前</button><button data-act="delete">削除</button></div>');
+        h.push('<div class="meta">'+g.images.length+'枚<button class="ib" data-act="delete" title="この商品を削除">×</button></div>');
       }
       h.push('</div><div class="cells">');
       g.images.forEach(function(im,ii){
@@ -460,6 +459,7 @@
     else if(act==='rename' && !g.pending && !g.busy) startRename(row,g);
     else if(act==='delete') deleteGroup(g);
     else if(act==='retry'){ g.error=null; g.progress=0; render(); enqueue(function(){ return uploadGroup(g); }); }
+    else if(act==='showerr') alert('アップに失敗しました。\n\n'+g.error+'\n\n403 の場合は、トークンの Repository access にこのリポジトリを追加し、Contents を Read and write にしてください。');
     else if(act==='discard'){ groups.splice(groups.indexOf(g),1); render(); }
   });
 
